@@ -97,9 +97,11 @@ def rgb_hex(rgb):
 
 
 class Layer:
-    def __init__(self, below=None):
+    def __init__(self, below=None, width=W, height=H):
         self.px = {}            # (x, y) -> "#rrggbb"
         self.below = below      # layers underneath, used to blend translucent paint
+        self.width = width
+        self.height = height
 
     def colour_at(self, x, y):
         if (x, y) in self.px:
@@ -110,8 +112,8 @@ class Layer:
         return None
 
     def rect(self, x, y, w, h, colour, alpha=1.0):
-        for yy in range(max(0, y), min(H, y + h)):
-            for xx in range(max(0, x), min(W, x + w)):
+        for yy in range(max(0, y), min(self.height, y + h)):
+            for xx in range(max(0, x), min(self.width, x + w)):
                 if alpha >= 1:
                     self.px[(xx, yy)] = colour
                 else:
@@ -149,7 +151,7 @@ class Layer:
                 runs.append((start, prev + 1, colour))
             runs_by_row[y] = runs
         open_rects, done = {}, []
-        for y in range(H + 1):
+        for y in range(self.height + 1):
             current = {(a, b, c) for a, b, c in runs_by_row.get(y, [])}
             for key in list(open_rects):
                 if key not in current:
@@ -601,7 +603,7 @@ def card_height(n_lines):
 
 def card_svg(project, palette, n_lines, image_uri):
     h = card_height(n_lines)
-    lay = Layer()
+    lay = Layer(width=CARD_W, height=h)
     lay.rect(IMG_X, IMG_Y + IMG_H, IMG_W, 2, palette["border"])
     small_text(lay, project["name"], 16, 286, 4, palette["ink"])
     y = 318
@@ -641,9 +643,12 @@ def rule_svg(label, palette, align):
 
 
 def picture(day, night, alt, width, href=None):
-    img = (f'<picture><source media="(prefers-color-scheme: dark)" srcset="{night}">'
-           f'<img src="{day}" alt="{alt}" width="{width}"></picture>')
-    return f'<a href="{href}">{img}</a>' if href else img
+    img = (f'<picture>\n  <source media="(prefers-color-scheme: dark)" srcset="{night}">\n'
+           f'  <img src="{day}" alt="{alt}" width="{width}">\n</picture>')
+    if href:
+        indented_img = "\n  ".join(img.splitlines())
+        return f'<a href="{href}">\n  {indented_img}\n</a>'
+    return img
 
 
 def write_projects(root):
@@ -661,14 +666,14 @@ def write_projects(root):
         (out / f"heading-{name}.svg").write_text(rule_svg("What I'm building at the moment", palette, "left"))
         (out / f"footer-{name}.svg").write_text(rule_svg("shared as it goes", palette, "right"))
 
-    rows = ['<p>' + picture("projects/heading-day.svg", "projects/heading-night.svg",
-                             "What I'm building at the moment", "100%") + '</p>']
+    rows = ['<p>\n  ' + picture("projects/heading-day.svg", "projects/heading-night.svg",
+                                  "What I'm building at the moment", "100%").replace("\n", "\n  ") + '\n</p>']
     for i in range(0, len(projects), 2):
         cells = [picture(f'projects/{p["key"]}-day.svg', f'projects/{p["key"]}-night.svg',
                          f'{p["name"]}: {p["line"]}', "49%", p["url"]) for p in projects[i:i + 2]]
-        rows.append("<p>" + "&nbsp;".join(cells) + "</p>")
-    rows.append('<p>' + picture("projects/footer-day.svg", "projects/footer-night.svg",
-                                "Shared as it goes", "100%") + '</p>')
+        rows.append('<p>\n  ' + '\n  &nbsp;'.join(cell.replace("\n", "\n  ") for cell in cells) + '\n</p>')
+    rows.append('<p>\n  ' + picture("projects/footer-day.svg", "projects/footer-night.svg",
+                                    "Shared as it goes", "100%").replace("\n", "\n  ") + '\n</p>')
     block = "\n".join(rows)
 
     readme = root / "README.md"
