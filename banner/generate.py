@@ -4,11 +4,13 @@
     python3 banner/generate.py --login lucasssoh    # real numbers, needs GITHUB_TOKEN
     python3 banner/generate.py --sample             # made-up numbers, works offline
 
-Writes banner/day.svg (light theme) and banner/night.svg (dark theme).
+Writes banner/day.svg (light theme) and banner/night.svg (dark theme), then draws one card per
+entry of projects.json into projects/ and rewrites the README between the projects markers.
 Standard library only.
 """
 
 import argparse
+import base64
 import datetime as dt
 import json
 import os
@@ -539,11 +541,150 @@ def build(t, numbers):
     )
 
 
+# ---------------------------------------------------------------------------
+# Project cards, drawn in the same pixel type as the banner
+# ---------------------------------------------------------------------------
+
+SMALL = {
+    "A": "010101111101101", "B": "110101110101110", "C": "011100100100011", "D": "110101101101110",
+    "E": "111100110100111", "F": "111100110100100", "G": "011100101101011", "H": "101101111101101",
+    "I": "111010010010111", "J": "001001001101010", "K": "101101110101101", "L": "100100100100111",
+    "M": "101111111101101", "N": "110101101101101", "O": "010101101101010", "P": "110101110100100",
+    "Q": "010101101110011", "R": "110101110101101", "S": "011100010001110", "T": "111010010010010",
+    "U": "101101101101111", "V": "101101101101010", "W": "101101111111101", "X": "101101010101101",
+    "Y": "101101010010010", "Z": "111001010100111",
+    "0": "111101101101111", "1": "010110010010111", "2": "110001010100111", "3": "110001010001110",
+    "4": "101101111001001", "5": "111100110001110", "6": "011100111101111", "7": "111001010010010",
+    "8": "111101111101111", "9": "111101111001110",
+    "-": "000000111000000", ".": "000000000000010", ",": "000000000010100", "'": "010010000000000",
+    "·": "000000010000000", ":": "000010000010000", "/": "001001010100100", "(": "001010010010001",
+    ")": "100010010010100", "+": "000010111010000", "!": "010010010000010", "?": "110001010000010",
+}
+
+CARD_DAY = dict(bg="#f6f3ec", border="#d9cfbb", ink="#1d3047", dim="#3f5873", faint="#7d8899", rule="#cfc6b3")
+CARD_NIGHT = dict(bg="#10182b", border="#2c2f39", ink="#eeece4", dim="#a9b0bd", faint="#6f7a8c", rule="#3a3f4c")
+
+
+def small_width(s, px):
+    return len(s) * 4 * px - px
+
+
+def small_text(layer, s, x, y, px, colour):
+    for ch in s.upper():
+        glyph = SMALL.get(ch)
+        if glyph:
+            for i, bit in enumerate(glyph):
+                if bit == "1":
+                    layer.rect(x + (i % 3) * px, y + (i // 3) * px, px, px, colour)
+        x += 4 * px
+
+
+def wrap(s, max_chars):
+    lines, line = [], ""
+    for word in s.split():
+        if line and len(line) + 1 + len(word) > max_chars:
+            lines.append(line)
+            line = word
+        else:
+            line = f"{line} {word}".strip()
+    if line:
+        lines.append(line)
+    return lines
+
+
+CARD_W, IMG_X, IMG_Y, IMG_W, IMG_H = 480, 6, 6, 468, 263
+
+
+def card_height(n_lines):
+    return 318 + n_lines * 22 + 34
+
+
+def card_svg(project, palette, n_lines, image_uri):
+    h = card_height(n_lines)
+    lay = Layer()
+    lay.rect(IMG_X, IMG_Y + IMG_H, IMG_W, 2, palette["border"])
+    small_text(lay, project["name"], 16, 286, 4, palette["ink"])
+    y = 318
+    for line in wrap(project["line"], 37):
+        small_text(lay, line, 16, y, 3, palette["dim"])
+        y += 22
+    small_text(lay, project["stack"], 16, h - 26, 2, palette["faint"])
+    alt = f'{project["name"]}: {project["line"]}'.replace('"', "'")
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {CARD_W} {h}" width="{CARD_W}" height="{h}" '
+        f'role="img" aria-label="{alt}"><title>{alt}</title>'
+        f'<clipPath id="i"><rect x="{IMG_X}" y="{IMG_Y}" width="{IMG_W}" height="{IMG_H}" rx="4"/></clipPath>'
+        f'<rect x="1.5" y="1.5" width="{CARD_W - 3}" height="{h - 3}" rx="8" fill="{palette["bg"]}" '
+        f'stroke="{palette["border"]}" stroke-width="3"/>'
+        f'<image href="{image_uri}" x="{IMG_X}" y="{IMG_Y}" width="{IMG_W}" height="{IMG_H}" '
+        f'preserveAspectRatio="xMidYMid slice" clip-path="url(#i)"/>'
+        f'<g shape-rendering="crispEdges">{lay.svg()}</g></svg>\n'
+    )
+
+
+def rule_svg(label, palette, align):
+    """A pixel label and a dotted rule across the README, like the banner's dithering."""
+    w, h, px = 1000, 20, 3
+    lay = Layer()
+    tw = small_width(label, px)
+    if align == "left":
+        small_text(lay, label, 0, 2, px, palette["ink"])
+        x0, x1 = tw + 16, w
+    else:
+        tw = small_width(label, 2)
+        small_text(lay, label, w - tw, 5, 2, palette["faint"])
+        x0, x1 = 0, w - tw - 16
+    for x in range(x0, x1 - 3, 8):
+        lay.rect(x, 9, 4, 2, palette["rule"])
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}" '
+            f'shape-rendering="crispEdges" role="img" aria-label="{label}"><title>{label}</title>{lay.svg()}</svg>\n')
+
+
+def picture(day, night, alt, width, href=None):
+    img = (f'<picture><source media="(prefers-color-scheme: dark)" srcset="{night}">'
+           f'<img src="{day}" alt="{alt}" width="{width}"></picture>')
+    return f'<a href="{href}">{img}</a>' if href else img
+
+
+def write_projects(root):
+    projects = json.loads((root / "projects.json").read_text())
+    out = root / "projects"
+    out.mkdir(exist_ok=True)
+    n_lines = max(len(wrap(p["line"], 37)) for p in projects)
+    for p in projects:
+        image = root / p["image"]
+        mime = {"webp": "image/webp", "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg"}[image.suffix[1:].lower()]
+        uri = f"data:{mime};base64,{base64.b64encode(image.read_bytes()).decode()}"
+        for name, palette in (("day", CARD_DAY), ("night", CARD_NIGHT)):
+            (out / f'{p["key"]}-{name}.svg').write_text(card_svg(p, palette, n_lines, uri))
+    for name, palette in (("day", CARD_DAY), ("night", CARD_NIGHT)):
+        (out / f"heading-{name}.svg").write_text(rule_svg("What I'm building at the moment", palette, "left"))
+        (out / f"footer-{name}.svg").write_text(rule_svg("shared as it goes", palette, "right"))
+
+    rows = ['<p>' + picture("projects/heading-day.svg", "projects/heading-night.svg",
+                             "What I'm building at the moment", "100%") + '</p>']
+    for i in range(0, len(projects), 2):
+        cells = [picture(f'projects/{p["key"]}-day.svg', f'projects/{p["key"]}-night.svg',
+                         f'{p["name"]}: {p["line"]}', "49%", p["url"]) for p in projects[i:i + 2]]
+        rows.append("<p>" + "&nbsp;".join(cells) + "</p>")
+    rows.append('<p>' + picture("projects/footer-day.svg", "projects/footer-night.svg",
+                                "Shared as it goes", "100%") + '</p>')
+    block = "\n".join(rows)
+
+    readme = root / "README.md"
+    text_ = readme.read_text()
+    start, end = "<!-- projects:start -->", "<!-- projects:end -->"
+    head, rest = text_.split(start, 1)
+    _, tail = rest.split(end, 1)
+    readme.write_text(f"{head}{start}\n{block}\n{end}{tail}")
+    return len(projects)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--login", default="lucasssoh")
     ap.add_argument("--sample", action="store_true", help="made-up numbers, no network")
-    ap.add_argument("--out", default=str(HERE), help="output folder (default: banner/)")
+    ap.add_argument("--out", default=str(HERE), help="banner output folder (default: banner/)")
     args = ap.parse_args()
 
     if args.sample:
@@ -559,6 +700,7 @@ def main():
     for name, palette in (("day", DAY), ("night", NIGHT)):
         (out / f"{name}.svg").write_text(build(palette, numbers))
     print(f"{numbers[0]} contributions, {numbers[1]} days in a row, {numbers[2]} repositories")
+    print(f"{write_projects(HERE.parent)} project cards")
 
 
 if __name__ == "__main__":

@@ -3,21 +3,9 @@
   <img src="banner/day.svg" alt="A pixel-art room under a wide window, with this year's contributions, the current streak and this month's repositories written in the sky" width="100%">
 </picture>
 
-What I'm building at the moment, shared as it goes.
-
-<!--
-  One block per project. To add one: put a 2:1 image (1600×800, .webp) in assets/,
-  then copy a block below. To retire one: delete its block and its image.
--->
-
-<a href="https://github.com/lucasssoh/dotfiles"><img src="assets/coucou-shell.webp" alt="The coucou-shell desktop" width="100%"></a>
-
-**[coucou-shell](https://github.com/lucasssoh/dotfiles)** · a Fedora desktop on Hyprland, installed and updated like a package.<br>
-<sub>Hyprland · Quickshell · Rust · GTK4</sub>
-
-<br>
-
-<a href="https://github.com/lucasssoh/Boussole"><img src="assets/boussole.webp" alt="A lesson in Boussole, on a laptop and a phone" width="100%"></a>
-
-**[Boussole](https://github.com/lucasssoh/Boussole)** · turns course documents into a track to study step by step.<br>
-<sub>Java · Spring Boot · Angular · SQLite</sub>
+<!-- To add a project: put a 16:9 image in assets/ and an entry in projects.json. The cards below are generated. -->
+<!-- projects:start -->
+<p><picture><source media="(prefers-color-scheme: dark)" srcset="projects/heading-night.svg"><img src="projects/heading-day.svg" alt="What I'm building at the moment" width="100%"></picture></p>
+<p><a href="https://github.com/lucasssoh/dotfiles"><picture><source media="(prefers-color-scheme: dark)" srcset="projects/coucou-shell-night.svg"><img src="projects/coucou-shell-day.svg" alt="coucou-shell: A Fedora desktop on Hyprland, installed and updated like a package." width="49%"></picture></a>&nbsp;<a href="https://github.com/lucasssoh/Boussole"><picture><source media="(prefers-color-scheme: dark)" srcset="projects/boussole-night.svg"><img src="projects/boussole-day.svg" alt="Boussole: Turns course documents into a track to study step by step." width="49%"></picture></a></p>
+<p><picture><source media="(prefers-color-scheme: dark)" srcset="projects/footer-night.svg"><img src="projects/footer-day.svg" alt="Shared as it goes" width="100%"></picture></p>
+<!-- projects:end -->

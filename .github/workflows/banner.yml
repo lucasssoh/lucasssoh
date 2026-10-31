@@ -9,6 +9,8 @@ on:
     paths:
       - banner/generate.py
       - .github/workflows/banner.yml
+      - projects.json
+      - assets/**
 
 permissions:
   contents: write
@@ -30,12 +32,12 @@ jobs:
 
       - name: Commit if a number changed
         run: |
-          if git diff --quiet -- banner/day.svg banner/night.svg; then
+          if git add -N projects; git diff --quiet -- banner projects README.md; then
             echo "Nothing changed."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add banner/day.svg banner/night.svg
+          git add banner/day.svg banner/night.svg projects README.md
           git commit -m "Banner: today's numbers"
           git push

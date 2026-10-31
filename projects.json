@@ -1,0 +1,18 @@
+[
+  {
+    "key": "coucou-shell",
+    "name": "coucou-shell",
+    "url": "https://github.com/lucasssoh/dotfiles",
+    "image": "assets/coucou-shell.webp",
+    "line": "A Fedora desktop on Hyprland, installed and updated like a package.",
+    "stack": "Hyprland · Quickshell · Rust · GTK4"
+  },
+  {
+    "key": "boussole",
+    "name": "Boussole",
+    "url": "https://github.com/lucasssoh/Boussole",
+    "image": "assets/boussole.webp",
+    "line": "Turns course documents into a track to study step by step.",
+    "stack": "Java · Spring Boot · Angular · SQLite"
+  }
+]
