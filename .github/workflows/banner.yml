@@ -1,0 +1,41 @@
+name: Banner
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - banner/generate.py
+      - .github/workflows/banner.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: banner
+  cancel-in-progress: true
+
+jobs:
+  draw:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Draw the banner with today's numbers
+        run: python3 banner/generate.py --login "${{ github.repository_owner }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit if a number changed
+        run: |
+          if git diff --quiet -- banner/day.svg banner/night.svg; then
+            echo "Nothing changed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add banner/day.svg banner/night.svg
+          git commit -m "Banner: today's numbers"
+          git push

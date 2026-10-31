@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="banner/night.svg">
+  <img src="banner/day.svg" alt="A pixel-art room under a wide window, with this year's contributions, the current streak and this month's repositories written in the sky" width="100%">
+</picture>
+
 What I'm building at the moment, shared as it goes.
 
 <!--
